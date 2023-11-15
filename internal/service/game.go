@@ -21,32 +21,14 @@ func NewGameService(gr GameRepo, ur UserRepo, tr TaskRepo) *GameService {
 	return &GameService{gr, ur, tr}
 }
 
-func (gs *GameService) StartGame(ctx context.Context, claims *middleware.Claims, start model.StartTask) (bool, error) {
-	switch claims.UserRole {
+func (gs *GameService) StartGame(ctx context.Context, claims *middleware.Claims, start *model.StartTask) (bool, error) {
 
-	case "c":
-		result, err := gs.TryToStart(ctx, claims, start)
-		if err != nil {
-			return false, fmt.Errorf("Не удалось запустить игру")
-		}
-		err = gs.gameRepo.NewGame(ctx, claims.UserID, result)
-		if err != nil {
-			return false, fmt.Errorf("Не удалось добавить результат" + err.Error())
-		}
-		return result, nil
-
-	case "l":
-		return false, fmt.Errorf("недопустимая роль пользователя")
-
-	default:
+	if claims.UserRole != "c" {
 		return false, fmt.Errorf("недопустимая роль пользователя")
 	}
-}
 
-// TODO: Add update assigned_loaders table
-func (gs *GameService) TryToStart(ctx context.Context, claims *middleware.Claims, start model.StartTask) (bool, error) {
 	customer, err := gs.userRepo.GetInfoAboutCustomerByID(ctx, claims.UserID)
-	fmt.Print(start)
+	var result bool
 	if err != nil {
 		return false, err
 	}
@@ -59,7 +41,6 @@ func (gs *GameService) TryToStart(ctx context.Context, claims *middleware.Claims
 	var loadersWage int
 
 	for _, l := range start.AssignedLoaders {
-
 		loader, err := gs.userRepo.GetLoaderByID(ctx, l)
 		if err != nil {
 			return false, err
@@ -79,21 +60,30 @@ func (gs *GameService) TryToStart(ctx context.Context, claims *middleware.Claims
 		if err != nil {
 			return false, err
 		}
-		customer.AssignedLoaders = append(customer.AssignedLoaders, loader)
-
-		fmt.Println(loader)
-	}
-	customer.Capital -= loadersWage
-	if task.Weight <= loadersWeight && customer.Capital >= loadersWage {
-		_, err := gs.userRepo.UpdateCustomer(ctx, customer.Capital, claims.UserID)
+		customer.AssignedLoaders = append(customer.AssignedLoaders, *loader)
+		err = gs.taskRepo.AddAssignedLoaders(ctx, loader.UserID, task.TaskID)
 		if err != nil {
 			return false, err
 		}
+	}
+
+	customer.Capital -= loadersWage
+	_, err = gs.userRepo.UpdateCustomer(ctx, customer.Capital, claims.UserID)
+	if err != nil {
+		return false, err
+	}
+	if task.Weight <= loadersWeight && customer.Capital >= loadersWage {
 		err = gs.taskRepo.UpdateTask(ctx, task.TaskID, !task.Status)
 		if err != nil {
 			return false, err
 		}
-		return true, nil
+		result = true
 	}
-	return false, nil
+	print(task.Weight, loadersWeight, customer.Capital, loadersWage, result)
+	err = gs.gameRepo.NewGame(ctx, claims.UserID, result)
+	if err != nil {
+		return false, fmt.Errorf("Не удалось добавить результат" + err.Error())
+	}
+	return result, nil
+
 }

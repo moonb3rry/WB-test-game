@@ -25,7 +25,7 @@ type Task struct {
 	TaskName   string `json:"task_name" db:"task_name"`
 	Weight     int    `json:"weight" db:"weight"`
 	Status     bool   `json:"status" db:"status"`
-	CustomerID int    `json:"customer_id" db:"customer_id"`
+	CustomerID *int   `json:"customer_id" db:"customer_id"`
 }
 
 type AssignedLoader struct {

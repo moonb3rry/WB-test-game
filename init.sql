@@ -23,7 +23,7 @@ create table tasks(
                       task_name varchar(100),
                       weight int,
                       status bool,
-                      customer_id int default 1
+                      customer_id int
 );
 
 create table assigned_loaders(

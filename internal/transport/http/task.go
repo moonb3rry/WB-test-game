@@ -7,13 +7,13 @@ import (
 )
 
 func (c *controller) TasksHandler(w http.ResponseWriter, r *http.Request) {
-	claims, err := middleware.ExtractClaims(r) // Функция для извлечения claims из JWT
+	claims, err := middleware.ExtractClaims(r)
 	if err != nil {
 		http.Error(w, "Ошибка извлечения claims: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	data, err := c.taskService.GetAvailableTasks(r.Context(), *claims)
+	data, err := c.taskService.GetAvailableTasks(r.Context(), claims)
 	if err != nil {
 		http.Error(w, "Ошибка получения данных пользователя: "+err.Error(), http.StatusBadRequest)
 		return

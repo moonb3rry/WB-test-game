@@ -11,15 +11,15 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, user model.User) (int, error)
-	GetUserByName(ctx context.Context, name string) (model.User, error)
-	GetInfoAboutLoaderByID(ctx context.Context, ID int) (model.AboutLoader, error)
-	GetInfoAboutCustomerByID(ctx context.Context, ID int) (model.AboutCustomer, error)
-	GetLoaderByID(ctx context.Context, ID int) (model.Loader, error)
-	CreateCustomer(ctx context.Context, customer model.Customer) error
-	CreateLoader(ctx context.Context, loader model.Loader) error
-	UpdateCustomer(ctx context.Context, capital int, userID int) (model.Customer, error)
-	UpdateLoader(ctx context.Context, loader model.Loader) (model.Loader, error)
+	CreateUser(ctx context.Context, user *model.User) (int, error)
+	GetUserByName(ctx context.Context, name string) (*model.User, error)
+	GetInfoAboutLoaderByID(ctx context.Context, ID int) (*model.AboutLoader, error)
+	GetInfoAboutCustomerByID(ctx context.Context, ID int) (*model.AboutCustomer, error)
+	GetLoaderByID(ctx context.Context, ID int) (*model.Loader, error)
+	CreateCustomer(ctx context.Context, customer *model.Customer) error
+	CreateLoader(ctx context.Context, loader *model.Loader) error
+	UpdateCustomer(ctx context.Context, capital int, userID int) (*model.Customer, error)
+	UpdateLoader(ctx context.Context, loader *model.Loader) (*model.Loader, error)
 }
 
 type UserService struct {
@@ -30,7 +30,7 @@ func NewUserService(ur UserRepo) *UserService {
 	return &UserService{userRepo: ur}
 }
 
-func (us UserService) RegisterUser(ctx context.Context, user model.User) error {
+func (us UserService) RegisterUser(ctx context.Context, user *model.User) error {
 
 	// валидация
 	if user.Username == "" || user.Password == "" {
@@ -66,7 +66,7 @@ func (us UserService) RegisterUser(ctx context.Context, user model.User) error {
 	}
 }
 
-func (us UserService) LogInUser(ctx context.Context, userLogin model.LoginRequest) (string, error) {
+func (us UserService) LogInUser(ctx context.Context, userLogin *model.LoginRequest) (string, error) {
 
 	// валидация
 	if userLogin.Username == "" || userLogin.Password == "" {
@@ -92,26 +92,26 @@ func (us UserService) LogInUser(ctx context.Context, userLogin model.LoginReques
 	return tokenString, nil
 }
 
-func (us UserService) AboutUser(ctx context.Context, claims middleware.Claims) (interface{}, error) {
+func (us UserService) AboutUser(ctx context.Context, claims *middleware.Claims) (interface{}, error) {
 	switch claims.UserRole {
 
 	case "c":
-		data, err := us.InfoAboutCustomer(ctx, claims)
+		data, err := us.userRepo.GetInfoAboutCustomerByID(ctx, claims.UserID)
 		if err != nil {
 			return nil, err
 		}
-		customerData := model.AboutCustomer{
+		customerData := &model.AboutCustomer{
 			data.Capital,
 			data.AssignedLoaders,
 		}
 		return customerData, nil
 
 	case "l":
-		data, err := us.InfoAboutLoader(ctx, claims)
+		data, err := us.userRepo.GetInfoAboutLoaderByID(ctx, claims.UserID)
 		if err != nil {
 			return nil, err
 		}
-		loaderData := model.AboutLoader{
+		loaderData := &model.AboutLoader{
 			data.Weight,
 			data.Wage,
 			data.Alcoholism,
@@ -124,55 +124,29 @@ func (us UserService) AboutUser(ctx context.Context, claims middleware.Claims) (
 	}
 }
 
-func (us UserService) InfoAboutCustomer(ctx context.Context, claims middleware.Claims) (*model.AboutCustomer, error) {
-	customer, err := us.userRepo.GetInfoAboutCustomerByID(ctx, claims.UserID)
-	if err != nil {
-		return &model.AboutCustomer{}, err
-	}
-	return &customer, nil
-}
-
-func (us UserService) InfoAboutLoader(ctx context.Context, claims middleware.Claims) (*model.AboutLoader, error) {
-	loader, err := us.userRepo.GetInfoAboutLoaderByID(ctx, claims.UserID)
-	if err != nil {
-		return &model.AboutLoader{}, err
-	}
-	return &loader, nil
-}
-
-func generateCustomer(id int) model.Customer {
-	var c model.Customer
-	c.UserID = id
+func generateCustomer(id int) *model.Customer {
 	rand.Seed(time.Now().UnixNano()) // Инициализируйте генератор случайных чисел
-	min := 10000
-	max := 100000
-	c.Capital = rand.Intn(max-min+1) + min
-	return c
+	minCapital := 10000
+	maxCapital := 100000
+	return &model.Customer{
+		UserID:  id,
+		Capital: rand.Intn(maxCapital-minCapital+1) + minCapital,
+	}
 }
 
-func generateLoader(id int) model.Loader {
-	var l model.Loader
-	l.UserID = id
-
-	min := 10000
-	max := 30000
-	l.Wage = rand.Intn(max-min+1) + min
-
-	min = 5
-	max = 30
-	l.MaxWeight = rand.Intn(max-min+1) + min
-
-	min = 0
-	max = 100
-	l.Fatigue = rand.Intn(max-min+1) + min
-
-	min = 0
-	max = 1
-	if rand.Intn(max-min+1)+min == 1 {
-		l.Alcoholism = true
+func generateLoader(id int) *model.Loader {
+	var alco bool
+	if rand.Intn(2) == 1 {
+		alco = true
 	} else {
-		l.Alcoholism = false
+		alco = false
 	}
 
-	return l
+	return &model.Loader{
+		UserID:     id,
+		MaxWeight:  rand.Intn(30-5+1) + 5,
+		Alcoholism: alco,
+		Fatigue:    rand.Intn(100 - 0 + 1),
+		Wage:       rand.Intn(30000-10000+1) + 10000,
+	}
 }

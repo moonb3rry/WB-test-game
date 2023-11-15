@@ -17,7 +17,7 @@ func JWTAuthentication(next http.Handler) http.Handler {
 		})
 
 		if err != nil || !token.Valid {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Вы не авторизованы", http.StatusUnauthorized)
 			return
 		}
 
