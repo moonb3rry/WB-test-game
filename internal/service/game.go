@@ -79,7 +79,6 @@ func (gs *GameService) StartGame(ctx context.Context, claims *middleware.Claims,
 		}
 		result = true
 	}
-	print(task.Weight, loadersWeight, customer.Capital, loadersWage, result)
 	err = gs.gameRepo.NewGame(ctx, claims.UserID, result)
 	if err != nil {
 		return false, fmt.Errorf("Не удалось добавить результат" + err.Error())
